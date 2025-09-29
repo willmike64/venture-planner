@@ -1,0 +1,18 @@
+# Streamlit configuration file
+credentials:
+  usernames:
+    "testuser@example.com":
+      email: testuser@example.com
+      name: Test User
+      password: '$2b$12$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    "anotheruser@example.com":
+      email: anotheruser@example.com
+      name: Another User
+      password: '$2b$12$yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy'
+cookie:
+  expiry_days: 30
+  key: "a_very_secret_key_for_cookie_signature"
+  name: "gold_rush_cookie"
+preauthorized:
+  emails:
+    - preauth@example.com
