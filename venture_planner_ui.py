@@ -43,52 +43,62 @@ import json, datetime
 
 st.set_page_config(page_title="Venture Creation Planner", layout="wide")
 
-db_ref = get_db()
-if db_ref is None:
-    st.error("Database reference is not initialized. Check your Firebase configuration.")
-    st.stop()
+try:
+    db_ref = get_db()
+except Exception as e:
+    st.warning("Firebase not configured. Running in demo mode without data persistence.")
+    db_ref = None
 
 # Helper function to write immutable records (blockchain-like ledger)
 def write_ledger(user_email, data):
     if db_ref is None:
-        st.error("Database reference is not initialized. Cannot write to ledger.")
+        st.warning("Demo mode: Data not saved (Firebase not configured)")
         return
-    ref = db_ref.child("venture_plans").push()
-    record = {
-        "user": user_email,
-        "timestamp": datetime.datetime.utcnow().isoformat(),
-        "data": data
-    }
-    ref.set(record)
+    try:
+        ref = db_ref.child("venture_plans").push()
+        record = {
+            "user": user_email,
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "data": data
+        }
+        ref.set(record)
+    except Exception as e:
+        st.error(f"Failed to save data: {str(e)}")
+        st.warning("Running in demo mode - data not persisted")
 
 # --- LOGIN SYSTEM ---
 if "user" not in st.session_state:
     st.session_state.user = None
 
 def login(email, password):
-    user_id = firebase_login(email, password).get('localId')
-    st.info(f"Debug: user_id = {user_id}")
-    if user_id:
-        user_profile = get_user_data(user_id)
-        st.info(f"Debug: user_profile = {user_profile}")
-        if isinstance(user_profile, dict):
-            stored_pw = user_profile.get('password')
-            if stored_pw is None:
-                st.error("Account exists but no password is set. Please reset your password.")
-                return False
-            if stored_pw == password:
-                st.session_state.user = user_profile
-                st.success(f"Welcome back, {user_profile.get('name', email)}")
-                st.session_state.login_success = True
-                return True
+    try:
+        user_id = firebase_login(email, password).get('localId')
+        st.info(f"Debug: user_id = {user_id}")
+        if user_id:
+            user_profile = get_user_data(user_id)
+            st.info(f"Debug: user_profile = {user_profile}")
+            if isinstance(user_profile, dict):
+                stored_pw = user_profile.get('password')
+                if stored_pw is None:
+                    st.error("Account exists but no password is set. Please reset your password.")
+                    return False
+                if stored_pw == password:
+                    st.session_state.user = user_profile
+                    st.success(f"Welcome back, {user_profile.get('name', email)}")
+                    st.session_state.login_success = True
+                    return True
+                else:
+                    st.error("Invalid credentials. (Check user_profile and password field)")
+                    return False
             else:
-                st.error("Invalid credentials. (Check user_profile and password field)")
+                st.error("User profile data is corrupted or not found. Contact support.")
                 return False
         else:
-            st.error("User profile data is corrupted or not found. Contact support.")
+            st.error("Invalid credentials. (Check user_id generation)")
             return False
-    else:
-        st.error("Invalid credentials. (Check user_id generation)")
+    except Exception as e:
+        st.error(f"Firebase authentication error: {str(e)}")
+        st.error("Please check Firebase configuration in Streamlit Cloud secrets.")
         return False
 
 def signup(email, password):
@@ -332,9 +342,13 @@ if st.button("Save Progress Now", key="save_top"):
 # --- PREPOPULATE & IDEA DROPDOWN ---
 idea_options = []
 idea_data_map = {}
-if st.session_state.user:
-    ref = db_ref.child("venture_plans")
-    entries = ref.get()
+if st.session_state.user and db_ref is not None:
+    try:
+        ref = db_ref.child("venture_plans")
+        entries = ref.get()
+    except Exception as e:
+        st.warning("Could not load saved ideas (Firebase error)")
+        entries = None
     if entries:
         if isinstance(entries, dict):
             iterable = entries.items()
