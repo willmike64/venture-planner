@@ -2,3 +2,5 @@ streamlit
 firebase-admin
 pandas
 datetime
+openai
+requests
